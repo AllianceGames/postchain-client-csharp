@@ -4,7 +4,7 @@
     <TargetFrameworks>netstandard2.1;net6.0;net8.0</TargetFrameworks>
     <PackageId>PostchainClient</PackageId>
     <AssemblyName>Postchain.Client</AssemblyName>
-    <Version>0.7.3</Version>
+    <Version>0.7.4</Version>
     <Authors>Simon Sorgenfrei and Dennis Kirsch</Authors>
     <RepositoryUrl>https://github.com/chainofalliance/postchain-client-csharp</RepositoryUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
