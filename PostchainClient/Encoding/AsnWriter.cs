@@ -104,8 +104,9 @@ namespace Chromia.Encoding
         {
             var buffer = CurrentWriter()._buffer;
             var content = number.ToByteArray().ToList();
-            if (BitConverter.IsLittleEndian)
-                content.Reverse();
+            // BigInteger.ToByteArray() always returns little-endian bytes
+            // ASN.1 requires big-endian, so always reverse
+            content.Reverse();
 
             var contentSize = GetLengthBytes(content.Count);
             var contentByteSize = content.Count + contentSize.Count + 1;
@@ -218,27 +219,32 @@ namespace Chromia.Encoding
             }
             else
             {
+                // For negative numbers, find the first non-0xFF byte from the end
                 for (int i = byteList.Length - 1; i >= 0; i--)
                 {
                     if (byteList[i] != 0xff)
                     {
-                        for (int j = 0; j <= i; j++)
+                        // Include one more byte (i+1) to preserve sign, unless already at the last position
+                        int endIndex = (i + 1 < byteList.Length) ? i + 1 : i;
+                        for (int j = 0; j <= endIndex; j++)
                         {
                             trimmedBytes.Add(byteList[j]);
                         }
-
                         break;
                     }
                 }
 
-                if (trimmedBytes.Count == 0 || trimmedBytes[^1] < 128)
+                // If all bytes are 0xFF (like -1), just keep one byte
+                if (trimmedBytes.Count == 0)
                 {
-                    trimmedBytes.Insert(0, 0xff);
-                    if (integer < 0)
-                    {
-                        trimmedBytes.Reverse();
-                    }
+                    trimmedBytes.Add(0xff);
                 }
+            }
+
+            // If all bytes were trimmed, just add 0x00
+            if (trimmedBytes.Count == 0)
+            {
+                trimmedBytes.Add(0x00);
             }
 
             return trimmedBytes.ToArray();
@@ -253,9 +259,23 @@ namespace Chromia.Encoding
 
             var sizeInBytesList = sizeInBytes.ToList();
             if (sizeInBytesList.Count == 0)
+            {
                 sizeInBytesList.Add(0x00);
-            else if (!asLength && integer >= 0 && sizeInBytesList.First() >= 128)
-                sizeInBytesList.Insert(0, 0x00);
+            }
+            else if (!asLength)
+            {
+                // Apply sign extension for ASN.1 integer encoding (after byte order reversal)
+                if (integer >= 0 && sizeInBytesList[0] >= 128)
+                {
+                    // Positive number with MSB set - prepend 0x00 to indicate positive
+                    sizeInBytesList.Insert(0, 0x00);
+                }
+                else if (integer < 0 && sizeInBytesList[0] < 128)
+                {
+                    // Negative number with MSB clear - prepend 0xff to indicate negative
+                    sizeInBytesList.Insert(0, 0xff);
+                }
+            }
 
             return sizeInBytesList;
         }

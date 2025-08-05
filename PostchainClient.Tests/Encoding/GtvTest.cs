@@ -46,6 +46,8 @@ namespace Chromia.Tests.Encoding
         [InlineData("-42")]
         [InlineData("-256")]
         [InlineData("256")]
+        [InlineData("-65535")]
+        [InlineData("65535")]
         [InlineData("9223372036854775808")]
         [InlineData("-9223372036854775809")]
         public void BigIntegerTest(string n)
@@ -58,8 +60,12 @@ namespace Chromia.Tests.Encoding
 
         [Theory]
         [InlineData(0)]
+        [InlineData(-1)]
         [InlineData(42424242)]
+        [InlineData(-255)]
         [InlineData(-256)]
+        [InlineData(-65535)]
+        [InlineData(65535)]
         [InlineData(long.MinValue)]
         [InlineData(long.MaxValue)]
         public void IntegerTest(long i)
