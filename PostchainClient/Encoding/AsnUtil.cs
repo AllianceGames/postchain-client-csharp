@@ -11,13 +11,4 @@ namespace Chromia.Encoding
         Array = 0xa5,
         BigInteger = 0xa6
     }
-
-    internal enum Asn1Tag
-    {
-        Null = 0x05,
-        OctetString = 0x04,
-        UTF8String = 0x0c,
-        Integer = 0x02,
-        Sequence = 0x30
-    }
 }
