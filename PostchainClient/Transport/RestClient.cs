@@ -80,9 +80,9 @@ namespace Chromia.Transport
                 throw new ArgumentOutOfRangeException(nameof(blockchainRID), "has to be 32 bytes");
         }
 
-        public async static Task<List<Uri>> GetNodesFromDirectory(List<Uri> directoryNodeUrls, Buffer blockchainRID, CancellationToken ct)
+        public async static Task<List<string>> GetNodesFromDirectory(List<Uri> directoryNodeUrls, Buffer blockchainRID, CancellationToken ct)
         {
-            var directoryBrid = await GetBlockchainRID(directoryNodeUrls[0], 0, ct);
+            var directoryBrid = await GetDirectoryBridFromNodes(directoryNodeUrls, ct);
             var tmpClient = new RestClient(directoryNodeUrls, directoryBrid);
             var queryObject = new Dictionary<string, object>()
             {
@@ -90,6 +90,23 @@ namespace Chromia.Transport
             };
             var result = await tmpClient.Query<List<string>>("cm_get_blockchain_api_urls", queryObject, ct);
             return result.Select(n => new Uri(n)).ToList();
+        }
+
+        private async static Task<Buffer> GetDirectoryBridFromNodes(List<Uri> directoryNodeUrls, CancellationToken ct) {
+            Exception lastException = new TransportException(TransportException.ReasonCode.MalformedUri, "no directory nodes found");
+            
+            foreach (var directoryNodeUrl in directoryNodeUrls)
+            {
+                try
+                {
+                    return await GetBlockchainRID(directoryNodeUrl, 0, ct);
+                }
+                catch (Exception e)
+                {
+                    lastException = e;
+                }
+            }
+            throw lastException;
         }
 
         public async static Task<int> GetHashVersion(List<Uri> nodeUrls, Buffer blockchainRID, CancellationToken ct)
@@ -204,13 +221,20 @@ namespace Chromia.Transport
         public async Task<TransactionReceipt> WaitForConfirmation(Buffer transactionRID, int retry = 0, CancellationToken ct = default)
         {
             var txStatus = await GetTransactionStatus(transactionRID, ct);
-            if (txStatus.Status == ResponseStatus.Waiting && retry < _pollingRetries)
+            if (IsWaitingStatus(txStatus) && retry < _pollingRetries)
             {
                 await _transport.Delay(_pollingInterval, ct);
                 return await WaitForConfirmation(transactionRID, retry + 1, ct);
             }
             return new TransactionReceipt(transactionRID, txStatus, retry >= _pollingRetries);
         }
+
+        // "Waiting" happens when we ask a node that has seen the transaction but the transaction has not been put in a block.
+        // "Unknown" happens when we ask a node that has not even seen the transaction.
+        private bool IsWaitingStatus(TransactionStatusResponse txStatus) {
+            return txStatus.Status == ResponseStatus.Waiting || txStatus.Status == ResponseStatus.Unknown;
+        }
+
 
         private async Task<Buffer> RequestWithRetries(
             RequestType type,
