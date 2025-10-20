@@ -80,7 +80,7 @@ namespace Chromia.Transport
                 throw new ArgumentOutOfRangeException(nameof(blockchainRID), "has to be 32 bytes");
         }
 
-        public async static Task<List<string>> GetNodesFromDirectory(List<Uri> directoryNodeUrls, Buffer blockchainRID, CancellationToken ct)
+        public async static Task<List<Uri>> GetNodesFromDirectory(List<Uri> directoryNodeUrls, Buffer blockchainRID, CancellationToken ct)
         {
             var directoryBrid = await GetDirectoryBridFromNodes(directoryNodeUrls, ct);
             var tmpClient = new RestClient(directoryNodeUrls, directoryBrid);
