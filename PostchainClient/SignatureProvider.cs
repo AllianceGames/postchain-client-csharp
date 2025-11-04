@@ -144,10 +144,12 @@ namespace Chromia
         /// <inheritdoc/>
         public Buffer PubKey => _keyPair.PubKey;
         private readonly KeyPair _keyPair;
+        private readonly ECPrivKey _cachedPrivKey;
 
-        private SignatureProvider(KeyPair keyPair) 
+        private SignatureProvider(KeyPair keyPair)
         {
             _keyPair = keyPair;
+            _cachedPrivKey = ECPrivKey.Create(keyPair.PrivKey.Bytes);
         }
 
         /// <summary>
@@ -205,8 +207,7 @@ namespace Chromia
         {
             EnsureValidMessage(buffer);
 
-            var privKey = ECPrivKey.Create(_keyPair.PrivKey.Bytes);
-            var sig = privKey.SignECDSARFC6979(buffer.Bytes);
+            var sig = _cachedPrivKey.SignECDSARFC6979(buffer.Bytes);
             var compact = new byte[64];
             sig.WriteCompactToSpan(compact);
 
@@ -224,9 +225,10 @@ namespace Chromia
         {
             EnsureValidMessage(buffer);
 
-            var pubKey = ECPubKey.Create(sig.PubKey.Bytes);
+            if (!SecpECDSASignature.TryCreateFromCompact(sig.Hash.Bytes, out var signature))
+                return false;
 
-            SecpECDSASignature.TryCreateFromCompact(sig.Hash.Bytes, out var signature);
+            var pubKey = ECPubKey.Create(sig.PubKey.Bytes);
             return pubKey.SigVerify(signature, buffer.Bytes);
         }
 
